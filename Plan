@@ -1,0 +1,150 @@
+1. Phase I: Data Engineering (The Foundation)
+
+Objective: Create a clean, stationary, and tradeable dataset. Garbage in, garbage out.
+1.1 Data Ingestion & Sanitation
+
+    Ingestion: Load daily_prices.csv (OHLCV data for N tickers).
+
+    The "Ghost" Filter: Drop tickers with >10% missing data.
+
+    Imputation: Use Forward Fill (ffill) for small gaps. Strictly forbid Backward Fill to prevent look-ahead bias.
+
+    The "Fat Finger" Check: Clip daily returns that exceed ±50% (likely data errors) and replace with the local rolling mean.
+
+1.2 The "Tradeable Universe" Filters
+
+    Penny Stock Filter: Drop any stock where Price<5.0 (or equivalent unit).
+
+    Liquidity Filter: Drop any stock where Price×Volume<$1,000,000 (Daily Dollar Volume).
+
+        Rationale: Ensures we only trade assets where we can enter/exit without massive slippage.
+
+1.3 Feature Engineering
+
+    Momentum: RSI, MACD, Log Returns (1d, 5d, 10d).
+
+    Volatility: Rolling Standard Deviation, ATR (Average True Range).
+
+    Volume: Volume-Weighted Average Price (VWAP) ratios, Volume spikes.
+
+    Interaction Features: Volatility×Momentum (to detect high-risk trends).
+
+2. Phase II: The Meta-Labeling Strategy Engine
+
+Objective: Implement a "Two-Pronged" approach to maximize prediction accuracy. We will build two parallel pipelines and potentially compare them or ensemble them.
+Core Architecture:
+
+    Model A (The Sieve): Generates potential trade signals.
+
+    Model B (The Sniper): A LightGBM Meta-Model that predicts the probability of Model A being correct.
+
+Pipeline A: The "High Recall" Logic Model
+
+    Model A (Primary): A loose, logic-based heuristic designed to capture all potential trends.
+
+        Logic: "If Price > 20-Day MA AND RSI < 70, Signal BUY."
+
+        Goal: High Recall (don't miss anything), even if Precision is low.
+
+    Model B (Meta): Trained on the failures of the logic model.
+
+        Input: Volatility, Spread, Volume Dynamics.
+
+        Output: "Execute" or "Pass".
+
+Pipeline B: The "ML Primary" Model (K-Fold Strategy)
+
+    Model A (Primary): A Random Forest or Simple Neural Network.
+
+    Training Strategy: K-Fold Cross-Validation Signal Generation.
+
+        Split data into 5 folds.
+
+        Train on Folds 1-4 → Predict on Fold 5.
+
+        Repeat until we have "Out-of-Sample" predictions for the entire dataset.
+
+    Model B (Meta): Trained on the output of these out-of-sample predictions to filter false positives.
+
+2.3 Addressing Market Evolution (Non-Stationarity)
+
+    Mechanism: Walk-Forward Optimization (Rolling Window).
+
+        Instead of training once on Year 1 and testing on Year 2, we retrain the model every month/quarter.
+
+        Window: Train on trailing 12 months → Test on next 1 month → Slide window forward.
+
+        Benefit: Allows the model to adapt to changing regimes (e.g., Bull market → Bear market).
+
+3. Phase III: Backtesting & Performance Analysis
+
+Objective: Simulate reality with high fidelity.
+3.1 The Simulation Engine
+
+    Transaction Costs: Deduct 10bps (0.10%) per trade.
+
+    Slippage Model: Implement Square Root Law of Market Impact.
+
+        Penalty∝σ×DailyVolumeOrderSize​​.
+
+    Execution Price: ClosePrice±Slippage±Commision.
+
+3.2 Key Metrics Dashboard
+
+    Annualized Sharpe Ratio: Risk-adjusted return. (Target: > 1.5).
+
+    Maximum Drawdown (MDD): The deepest "pain" period.
+
+    Portfolio Turnover: Monthly turnover %. (Used to justify transaction costs).
+
+    Total Return (CAGR): Compound Annual Growth Rate.
+
+    Calmar Ratio: Return/MaxDrawdown (Measures return relative to crash risk).
+
+4. Phase IV: "Torture" & Failure Analysis
+
+Objective: Prove the strategy is robust, not just lucky.
+4.1 Stress Tests
+
+    The "Crash" Test: Isolate performance during known market drops (e.g., periods where the index fell >5%). Did the strategy survive?
+
+    The Liquidity Crunch: What if volume drops by 50%? Run the backtest with doubled slippage parameters.
+
+    Parameter Sensitivity:
+
+        Vary the "Probability Threshold" for Model B (0.50, 0.55, 0.60, 0.65).
+
+        Visual: A heatmap showing Sharpe Ratio stability across thresholds.
+
+4.2 Regime Analysis
+
+    Classify market days into "Bull," "Bear," and "Sideways."
+
+    Report performance broken down by regime. (e.g., "Strategy makes money in Bull/Bear but bleeds in Sideways markets").
+
+5. Phase V: Visualization Suite
+
+Objective: Communicate findings clearly to the recruiters.
+5.1 The "Backdrop" Dashboard
+
+    Plot: Equity Curve of Pipeline A (Logic Only) vs. Pipeline A + Meta-Labeling.
+
+    Insight: Visually demonstrate how Meta-Labeling smoothed the curve and reduced drawdowns.
+
+5.2 Feature Importance (SHAP)
+
+    Plot: SHAP Summary Plot for the LightGBM Meta-Model.
+
+    Insight: "High volatility was the strongest predictor of Model A failing."
+
+5.3 The Underwater Plot
+
+    Plot: A time-series area chart showing drawdown percentage over time.
+
+    Insight: "The longest recovery period was 4 months."
+
+5.4 The "Alpha" Heatmap
+
+    Plot: Monthly Returns Grid (Year on Y-axis, Month on X-axis).
+
+    Insight: Checks for seasonality (e.g., "Do we always lose money in December?").
