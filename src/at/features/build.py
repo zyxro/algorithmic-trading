@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from at.data.schema import OHLCVSchema
-from at.features.returns import add_forward_returns, add_log_returns
+# from at.features.returns import add_forward_returns, add_log_returns
 from at.features.technical import (
     add_atr,
     add_macd,
@@ -18,7 +18,7 @@ def build_feature_frame(df: pd.DataFrame, s: OHLCVSchema) -> pd.DataFrame:
     out = df.copy()
 
     # Momentum
-    out = add_log_returns(out, s, horizons=(1, 5, 10))
+    # out = add_log_returns(out, s, horizons=(1, 5, 10))
     out = add_rsi(out, s, period=14)
     out = add_macd(out, s)
 
@@ -35,6 +35,6 @@ def build_feature_frame(df: pd.DataFrame, s: OHLCVSchema) -> pd.DataFrame:
         out["vol_x_mom"] = out["vol_20d"] * out["logret_5d"]
 
     # Targets
-    out = add_forward_returns(out, s, horizon=1)
+    # out = add_forward_returns(out, s, horizon=1)
 
     return out

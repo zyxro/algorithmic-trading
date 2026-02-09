@@ -1,1 +1,0 @@
-"""Stat arb discovery helpers."""

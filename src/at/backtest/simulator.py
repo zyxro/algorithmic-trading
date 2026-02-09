@@ -16,7 +16,7 @@ class BacktestConfig:
     max_gross_leverage: float = 1.0
 
 
-def backtest_long_only_equal_weight(
+def backtest_equal_weight(
     df: pd.DataFrame,
     signal_col: str,
     date_col: str = "date",
@@ -24,14 +24,15 @@ def backtest_long_only_equal_weight(
     price_col: str = "close",
     vol_col: str = "vol_20d",
     dollar_vol_col: str | None = None,
+    weight_col: str | None = None,
     cfg: BacktestConfig | None = None,
 ) -> dict[str, pd.DataFrame | pd.Series | float]:
-    """Simple realistic-ish backtest for a *universe* signal.
+    """Simple realistic-ish backtest for a *universe* signal (Long/Short).
 
-    - Each day: equally weight tickers with signal==1.
+    - Each day: weights tickers with non-zero signal.
+    - If weight_col is None, uses equal weights across active signals (normalized by gross count).
+    - If weight_col provided, uses proportional weights.
     - Trades at close with (commission + slippage) applied.
-
-    This is intentionally minimal: you can extend to position sizing, risk parity, etc.
     """
 
     cfg = cfg or BacktestConfig()
@@ -47,11 +48,23 @@ def backtest_long_only_equal_weight(
     prices = d.pivot(index=date_col, columns=ticker_col, values=price_col).sort_index()
     sig = d.pivot(index=date_col, columns=ticker_col, values=signal_col).sort_index().fillna(0.0)
 
+    # Optional per-name weights (e.g., inverse-vol sizing)
+    if weight_col is not None:
+        w_raw = d.pivot(index=date_col, columns=ticker_col, values=weight_col).sort_index().fillna(0.0)
+    else:
+        w_raw = None
+
     daily_ret = prices.pct_change().fillna(0.0)
 
-    # Target weights: equal weight on signaled names
-    n = sig.sum(axis=1).replace(0, np.nan)
-    w_tgt = sig.div(n, axis=0).fillna(0.0)
+    # Target weights
+    if w_raw is not None:
+        w_tgt = sig * w_raw
+        w_sum = w_tgt.abs().sum(axis=1).replace(0, np.nan)
+        w_tgt = w_tgt.div(w_sum, axis=0).fillna(0.0)
+    else:
+        # Normalize by count of active signals (Long + Short)
+        n = sig.abs().sum(axis=1).replace(0, np.nan)
+        w_tgt = sig.div(n, axis=0).fillna(0.0)
 
     # Enforce gross leverage cap
     gross = w_tgt.abs().sum(axis=1)
