@@ -10,7 +10,7 @@ __pycache__/
 /data/processed/
 
 # Reports
-/reports/figures/
+# /reports/figures/
 
 # Local configs
 .env
