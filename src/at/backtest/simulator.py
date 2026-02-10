@@ -85,6 +85,15 @@ def backtest_equal_weight(
     cost_series = pd.Series(index=prices.index, dtype=float)
     cost_series.iloc[0] = 0.0
 
+    comm_series = pd.Series(index=prices.index, dtype=float)
+    comm_series.iloc[0] = 0.0
+
+    impact_series = pd.Series(index=prices.index, dtype=float)
+    impact_series.iloc[0] = 0.0
+
+    traded_notional_series = pd.Series(index=prices.index, dtype=float)
+    traded_notional_series.iloc[0] = 0.0
+
     for i in range(1, len(prices.index)):
         dt = prices.index[i]
         prev_dt = prices.index[i - 1]
@@ -99,9 +108,11 @@ def backtest_equal_weight(
         # Trading notional for rebalance
         dw = (w_tgt_row - w_prev_row).fillna(0.0)
         traded_notional = float(dw.abs().sum() * eq_prev)
+        traded_notional_series.loc[dt] = traded_notional
 
         # Commission
         comm = commission_bps(traded_notional, bps=cfg.commission_bps)
+        comm_series.loc[dt] = comm
 
         # Slippage/impact
         sigma_row = vols.loc[dt].fillna(0.0)
@@ -117,6 +128,8 @@ def backtest_equal_weight(
             impact_frac = sqrt_impact_slippage(sigma=sigma, daily_dollar_vol=adv_i, order_dollar=order_dollar, k=cfg.impact_k)
             impact_cost += abs(order_dollar) * impact_frac
 
+        impact_series.loc[dt] = impact_cost
+
         costs = comm + impact_cost
         cost_series.loc[dt] = costs
 
@@ -130,4 +143,7 @@ def backtest_equal_weight(
         "weights": w_tgt,
         "turnover": turnover,
         "costs": cost_series,
+        "commission": comm_series,
+        "impact": impact_series,
+        "traded_notional": traded_notional_series,
     }

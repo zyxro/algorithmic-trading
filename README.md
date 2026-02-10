@@ -64,7 +64,7 @@ python scripts/run_features.py
 ```
 
 ### 2. Model Training
-Loads the processed features, labels the data (triple-barrier method), and trains the Meta-Labeling model (LightGBM).
+Loads the processed features, labels the data (triple-barrier method), and trains the Meta-Labeling model (RandomForest).
 ```bash
 python scripts/run_train.py
 ```
@@ -94,7 +94,7 @@ For a detailed walkthrough of the methodology and results:
 
 This solution uses a **Meta-Labeling** approach:
 1.  **Logic Sieve**: A base logic filters for high-momentum / mean-reverting conditions.
-2.  **Meta Model**: A Secondary ML model (LightGBM) predicts the probability of the base signal resulting in a profit.
+2.  **Meta Model**: A Secondary ML model (RandomForest) predicts the probability of the base signal resulting in a profit.
 3.  **Position Sizing**: Trades are taken only when the meta-model confidence exceeds a threshold.
 
-Dependencies include `pandas`, `lightgbm`, `scikit-learn`, and `statsmodels`.
+Dependencies include `pandas`, `scikit-learn`, and `statsmodels`.

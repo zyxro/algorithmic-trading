@@ -42,7 +42,13 @@ def plot_underwater(equity: pd.Series, title: str = "Underwater (Drawdown)") -> 
     plt.tight_layout()
 
 
-def plot_monthly_heatmap(returns: pd.Series, title: str = "Monthly Returns") -> None:
+def plot_monthly_heatmap(
+    returns: pd.Series,
+    title: str = "Monthly Returns",
+    *,
+    show_total: bool = False,
+    annot: bool = False,
+) -> None:
     r = returns.copy()
     r.index = pd.to_datetime(r.index)
     # Pandas >= 3.0: use 'ME' (month-end) instead of deprecated 'M'
@@ -52,9 +58,19 @@ def plot_monthly_heatmap(returns: pd.Series, title: str = "Monthly Returns") -> 
     table["month"] = table.index.month
     pivot = table.pivot(index="year", columns="month", values="ret")
 
+    # Month labels for readability
+    month_labels = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+    pivot = pivot.rename(columns=month_labels)
+
+    if show_total and not pivot.empty:
+        # Annual compounded return from monthly returns
+        total = (1.0 + pivot.fillna(0.0)).prod(axis=1) - 1.0
+        pivot = pivot.assign(Total=total)
+
     import seaborn as sns
 
-    plt.figure(figsize=(10, 4))
-    sns.heatmap(pivot, annot=False, center=0.0, cmap="RdYlGn")
+    ncols = max(12, int(pivot.shape[1])) if not pivot.empty else 12
+    plt.figure(figsize=(max(10, int(ncols * 0.75)), 4))
+    sns.heatmap(pivot, annot=bool(annot), center=0.0, cmap="RdYlGn", fmt=".1%")
     plt.title(title)
     plt.tight_layout()
